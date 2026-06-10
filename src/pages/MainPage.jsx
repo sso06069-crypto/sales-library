@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { getMentors, getCompetencies } from '../api';
 import Header from '../components/Header';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Footer from '../components/Footer';
 
 function MainPage() {
   const [competencies, setCompetencies] = useState([]);
@@ -124,6 +125,7 @@ function MainPage() {
           </div>
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

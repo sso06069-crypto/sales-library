@@ -4,6 +4,7 @@ import { getCompetencies, getEpisodes, getMentors } from '../api';
 import Header from '../components/Header';
 import { ChevronLeft } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Footer from '../components/Footer';
 
 function SkillPage() {
   const { competencyId } = useParams();
@@ -105,6 +106,7 @@ function SkillPage() {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   );
 }

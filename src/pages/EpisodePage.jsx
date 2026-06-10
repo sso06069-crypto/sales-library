@@ -5,6 +5,7 @@ import { ChevronLeft } from 'lucide-react';
 import { getEpisodes, getMentors, getCompetencies } from '../api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ChatBot from '../components/ChatBot';
+import Footer from '../components/Footer';
 
 function EpisodePage() {
   const { episodeId } = useParams();
@@ -133,6 +134,7 @@ function EpisodePage() {
         </div>
       </div>
       <ChatBot episode={episode} />
+      <Footer />
     </div>
   );
 }

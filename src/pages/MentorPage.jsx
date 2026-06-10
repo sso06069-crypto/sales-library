@@ -4,6 +4,7 @@ import { getMentors, getEpisodes, getCompetencies } from '../api';
 import Header from '../components/Header';
 import { ChevronLeft } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
+import Footer from '../components/Footer';
 
 function MentorPage() {
   const { mentorId } = useParams();
@@ -95,6 +96,7 @@ function MentorPage() {
           )}
         </div>
       </div>
+      <Footer />
     </div>
   );
 }
