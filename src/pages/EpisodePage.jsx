@@ -123,7 +123,7 @@ function EpisodePage() {
 
           {/* STAR 구조 */}
           <div className="mb-8">
-            <h2 className="text-lg font-bold text-indigo-600 mb-3">STAR 구조</h2>
+            <h2 className="text-lg font-bold text-indigo-600 mb-3">STAR 분석</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {[
                 { label: '상황', value: episode['STAR-상황'] },
