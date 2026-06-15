@@ -10,6 +10,7 @@ function SkillPage() {
   const { competencyId } = useParams();
   const navigate = useNavigate();
   const [competency, setCompetency] = useState(null);
+  const [competencies, setCompetencies] = useState([]);
   const [episodes, setEpisodes] = useState([]);
   const [mentors, setMentors] = useState([]);
   const [search, setSearch] = useState('');
@@ -18,15 +19,29 @@ function SkillPage() {
   useEffect(() => {
     Promise.all([
       getCompetencies().then(data => {
-        const found = data.find(c => c.competency_id === competencyId);
+        setCompetencies(data);
+    
+        const found = data.find(
+          c => String(c.competency_id) === String(competencyId)
+        );
+    
         setCompetency(found);
       }),
       getMentors().then(data => setMentors(data)),
       getEpisodes().then(data => {
         const filtered = data.filter(e => {
-          const ids = [e.competency_id_1, e.competency_id_2, e.competency_id_3, e.competency_id_4];
-          return ids.includes(competencyId) && e.공개여부 === 'TRUE';
+          const ids = [
+            e.competency_id_1,
+            e.competency_id_2,
+            e.competency_id_3,
+            e.competency_id_4
+          ];
+    
+          return ids.some(
+            id => String(id) === String(competencyId)
+          ) && e.공개여부 === 'TRUE';
         });
+    
         setEpisodes(filtered);
       })
     ]).then(() => setLoading(false));
@@ -87,6 +102,40 @@ function SkillPage() {
                 className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md cursor-pointer transition-all border border-gray-100 hover:border-indigo-300"
               >
                 <h3 className="font-bold text-gray-800 text-lg mb-2">{episode.제목}</h3>
+
+                {/* 스킬 태그 */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {[
+                    episode.competency_id_1,
+                    episode.competency_id_2,
+                    episode.competency_id_3,
+                    episode.competency_id_4
+                  ]
+                  .filter(Boolean)
+                  .map(id => {
+                    const skill = competencies.find(
+                      c => String(c.competency_id) === String(id)
+                    );
+
+                    return skill ? (
+                      <span
+                        key={id}
+                        className="
+                          bg-indigo-50
+                          text-indigo-500
+                          text-xs
+                          font-medium
+                          px-3
+                          py-1
+                          rounded-md
+                        "
+                      >
+                        #{skill.역량명}
+                      </span>
+                    ) : null;
+                  })}
+                </div>  
+
                 {mentor && (
                   <div className="flex items-center gap-2 mt-3">
                     <div className="w-8 h-8 bg-indigo-100 rounded-full flex items-center justify-center">
