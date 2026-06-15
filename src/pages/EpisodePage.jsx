@@ -139,11 +139,11 @@ function EpisodePage() {
             </div>
           </div>
 
-          {/* Sales Tip 요약 */}
+          {/* Checklist */}
           <div className="mb-6">
-            <h2 className="text-lg font-bold text-indigo-600 mb-3">Sales Tip 요약</h2>
+            <h2 className="text-lg font-bold text-indigo-600 mb-3">Sales Checklist</h2>
             <div className="bg-indigo-50 rounded-xl p-4">
-              {episode.세일즈팁요약.split('\n').map((tip, index) => (
+              {episode.Checklist.split('\n').map((tip, index) => (
                 <div key={index} className="flex items-start gap-2 mb-2">
                   <span className="text-indigo-400 font-bold">•</span>
                   <span className="text-gray-700 text-sm">{tip}</span>
