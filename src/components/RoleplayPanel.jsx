@@ -100,7 +100,7 @@ function RoleplayPanel({ episodes, navigate }) {
       setStep('chat');
 
       if (data.status !== 'ongoing') {
-        await runDebrief([{ role: 'assistant', content: data.reply }], data.systemPrompt);
+        await runDebrief([{ role: 'assistant', content: data.reply }], data.systemPrompt, score);
       }
     } catch (err) {
       console.error('setup 오류:', err);
@@ -136,7 +136,7 @@ function RoleplayPanel({ episodes, navigate }) {
 
       if (data.status !== 'ongoing') {
         setIsLoading(false);
-        await runDebrief(data.messages, systemPrompt);
+        await runDebrief(data.messages, systemPrompt, score);
         return;
       }
 
@@ -163,17 +163,18 @@ function RoleplayPanel({ episodes, navigate }) {
       });
       setPrevScore(score);
       setScore(data.score ?? score);
-      await runDebrief(data.messages, systemPrompt);
+      await runDebrief(data.messages, systemPrompt, score);
     } catch (err) {
       console.error('강제 종료 오류:', err);
     }
   };
 
   // ── 3단계: 디브리핑 ──
-  const runDebrief = async (history, sp) => {
+  const runDebrief = async (history, sp, finalScore) => {
     try {
       const data = await apiDebrief({ systemPrompt: sp ?? systemPrompt, messages: history });
-      setReportData(data);
+      setReportData({ ...data, score: finalScore ?? data.score ?? 50 });
+  
     } catch (err) {
       console.error('디브리핑 오류:', err);
       setReportData({

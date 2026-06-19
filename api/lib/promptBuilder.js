@@ -38,7 +38,6 @@ const DEBRIEF_INSTRUCTIONS = `
 - 응답은 오직 아래 형식의 순수 JSON 객체 하나만 출력하세요. 코드블록 표시(\`\`\`), 설명 문장, 인사말 등 JSON 이외의 텍스트는 절대 포함하지 마세요.
 {
   "result": "success 또는 fail 중 하나",
-  "score": 최종 호감도/평가 점수 (0~100 숫자),
   "strengths": [
     { "title": "10자 내외 핵심 키워드", "description": "구체적인 설명 1~2문장" }
   ],
