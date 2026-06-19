@@ -20,7 +20,8 @@ const TURN_STATUS_INSTRUCTIONS = `
 [호감도 판정 — 매 턴 필수]
 - 매 턴 응답의 가장 마지막 줄에 반드시 아래 둘 중 하나만 출력하세요 (예외 없음):
   [REACTION: positive]  ← 영업사원의 접근이 핵심 고민을 짚거나 신뢰를 줬을 때
-  [REACTION: negative]  ← 거칠거나 무례하거나 핵심을 놓쳤을 때
+  [REACTION: negative]  ← 명백히 무례하거나 적대적일 때, 또는 같은 방향 실수가 3회 이상 반복될 때
+  [REACTION: neutral]   ← 나쁘지 않지만 특별히 인상적이지도 않을 때
 - 점수 계산은 시스템이 처리합니다. 당신은 오직 positive/negative만 판정하세요.
 - 대화 중에는 '영업 성공', '실패', '판정', '점수' 같은 표현을 절대 입 밖에 내지 마세요.
 - 만약 사용자 메시지가 "(지금까지의 대화를 기준으로 반드시 성공 또는 실패 중 하나로 최종 판정하세요)"를 포함하면, [REACTION: positive] 또는 [REACTION: negative] 중 하나로 마무리하세요.
