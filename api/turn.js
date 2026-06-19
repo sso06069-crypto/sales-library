@@ -1,6 +1,5 @@
 // api/turn.js
 //
-// [2단계: 대화] — 사용자의 한 턴을 받아 응답 + 상태(ongoing/success/fail) + 점수를 반환한다.
 //
 // 요청 body:
 //   {
@@ -23,6 +22,9 @@
 //   안내문과 반드시 짝이 맞아야 함 — 문구를 바꾸면 두 파일을 함께 바꿀 것).
 // - 그래도 모델이 1~99 사이 점수를 내려보내면(드물지만 가능), 서버가 안전하게
 //   0 또는 100으로 스냅(snap)한다. 기준은 직전 점수(previousScore) 대비 더 가까운 쪽.
+
+const SCORE_STEP = 30;
+const SCORE_INIT = 50;
 
 const { callClaude } = require('./lib/claudeClient');
 const { parseTurnResponse, deriveStatusFromScore } = require('./lib/responseParser');
@@ -47,14 +49,15 @@ module.exports = async function handler(req, res) {
     const raw = await callClaude(systemPrompt, outgoingMessages);
     const parsed = parseTurnResponse(raw);
 
-    // 모델이 SCORE를 깜빡했을 경우, 직전 점수를 유지해서 흐름이 깨지지 않게 한다.
-    // (대화 시작 첫 턴이라 previousScore 자체가 없으면 50점에서 시작)
-    const fallbackScore = typeof previousScore === 'number' ? previousScore : 50;
-    let score = parsed.score !== null ? parsed.score : fallbackScore;
+    // 점수 계산 (코드로 처리)
+    const base = typeof previousScore === 'number' ? previousScore : SCORE_INIT;
+    let score = base;
+    if (parsed.reaction === 'positive') score = Math.min(100, base + SCORE_STEP);
+    if (parsed.reaction === 'negative') score = Math.max(0,   base - SCORE_STEP);
 
-    // forceEnd인데 모델이 0/100을 안 줬다면, 직전 점수 기준으로 더 가까운 쪽으로 스냅
+    // forceEnd인데 중간값이면 가까운 쪽으로 스냅
     if (forceEnd && score !== 0 && score !== 100) {
-      score = score >= fallbackScore ? 100 : 0;
+      score = score >= 50 ? 100 : 0;
     }
 
     const status = deriveStatusFromScore(score);

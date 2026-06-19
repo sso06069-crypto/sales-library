@@ -13,7 +13,7 @@
 //   - 1~99          → 'ongoing'
 // 이 규칙은 deriveStatusFromScore()에 있고, 모델의 텍스트 판단을 신뢰하지 않는다.
 
-const SCORE_RE = /\[SCORE:\s*(\d{1,3})\]/i;
+const REACTION_RE = /\[REACTION:\s*(positive|negative)\]/i;
 
 /**
  * 점수만으로 종료 여부를 객관적으로 판정한다. (모델의 자의적 텍스트 판단을 배제)
@@ -32,8 +32,11 @@ function deriveStatusFromScore(score) {
  * @returns {{ reply: string, status: 'ongoing'|'success'|'fail', score: number|null }}
  */
 function parseTurnResponse(rawText) {
-  const scoreMatch = rawText.match(SCORE_RE);
-  const score = scoreMatch ? clampScore(parseInt(scoreMatch[1], 10)) : null;
+  const match = rawText.match(REACTION_RE);
+  const reaction = match ? match[1].toLowerCase() : null; // 'positive' | 'negative' | null
+  const reply = rawText.replace(REACTION_RE, '').trim();
+  return { reply, reaction };
+}
 
   const reply = rawText.replace(SCORE_RE, '').trim();
   const status = deriveStatusFromScore(score);

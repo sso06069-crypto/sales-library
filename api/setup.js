@@ -36,9 +36,10 @@ module.exports = async function handler(req, res) {
     ]);
 
     const parsed = parseTurnResponse(raw);
-    // 첫 턴은 previousScore가 없으므로, 모델이 SCORE를 깜빡했다면 50점(중립)에서 시작한다.
-    // turn.js의 fallback 규칙과 동일하게 맞춰서 두 엔드포인트 간 점수 기준선이 어긋나지 않게 한다.
-    const score = parsed.score !== null ? parsed.score : 50;
+    const score = 50; // 항상 50으로 시작, reaction은 첫 대사라 무시
+
+    const status = deriveStatusFromScore(score);
+    res.status(200).json({ reply: parsed.reply, status, score, systemPrompt });
 
     const status = deriveStatusFromScore(score);
     res.status(200).json({ reply: parsed.reply, status, score, systemPrompt });
