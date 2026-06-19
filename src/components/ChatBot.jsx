@@ -23,11 +23,8 @@ const CONFETTI_PIECES = [
   { left: '46%', color: '#22C55E', delay: '0.5s',  duration: '2.3s' }
 ];
 
-// ─────────────────────────────────────────────
-// API 호출 헬퍼 (에피소드 챗봇 전용, botType='episode')
-// ─────────────────────────────────────────────
+// ─── API 헬퍼 ────────────────────────────────
 
-/** 1단계: 상황 설정 + 첫 대사 */
 async function apiSetup(episode) {
   const res = await fetch('/api/setup', {
     method: 'POST',
@@ -35,11 +32,9 @@ async function apiSetup(episode) {
     body: JSON.stringify({ botType: 'episode', episode })
   });
   if (!res.ok) throw new Error(`setup failed: ${res.status}`);
-  // { reply, status, score, systemPrompt }
   return res.json();
 }
 
-/** 2단계: 매 턴 대화 */
 async function apiTurn({ systemPrompt, messages, previousScore, forceEnd = false }) {
   const res = await fetch('/api/turn', {
     method: 'POST',
@@ -47,11 +42,9 @@ async function apiTurn({ systemPrompt, messages, previousScore, forceEnd = false
     body: JSON.stringify({ systemPrompt, messages, previousScore, forceEnd })
   });
   if (!res.ok) throw new Error(`turn failed: ${res.status}`);
-  // { reply, status, score, messages }
   return res.json();
 }
 
-/** 3단계: 최종 평가 리포트 */
 async function apiDebrief({ systemPrompt, messages }) {
   const res = await fetch('/api/debrief', {
     method: 'POST',
@@ -59,30 +52,28 @@ async function apiDebrief({ systemPrompt, messages }) {
     body: JSON.stringify({ systemPrompt, messages })
   });
   if (!res.ok) throw new Error(`debrief failed: ${res.status}`);
-  // { result, score, strengths, improvements, keyTakeaway, raw? }
   return res.json();
 }
 
-// ─────────────────────────────────────────────
-// ChatBot 컴포넌트
-// ─────────────────────────────────────────────
+// ─── ChatBot ────────────────────────────────
 
 function ChatBot({ episode }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  // 대화 상태
-  const [messages, setMessages] = useState([]);          // [{role, content}]
-  const [systemPrompt, setSystemPrompt] = useState(''); // setup이 내려준 systemPrompt를 보관
-  const [score, setScore] = useState(50);               // 현재 호감도 (표시용)
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-
-  // 화면 단계: 'idle' | 'chat' | 'analyzing' | 'result' | 'report'
-  const [phase, setPhase] = useState('idle');
-  const [debrief, setDebrief] = useState(null);
+  const [isOpen, setIsOpen]           = useState(false);
+  const [messages, setMessages]       = useState([]);
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [score, setScore]             = useState(50);
+  const [input, setInput]             = useState('');
+  const [isLoading, setIsLoading]     = useState(false);
+  // 'idle' | 'chat' | 'analyzing' | 'result' | 'report'
+  const [phase, setPhase]             = useState('idle');
+  const [debrief, setDebrief]         = useState(null);
   const [showTranscript, setShowTranscript] = useState(false);
-  const [analyzingIdx, setAnalyzingIdx] = useState(0);
+  const [analyzingIdx, setAnalyzingIdx]     = useState(0);
+
   const debriefHistoryRef = useRef(null);
+  // ref로 phase 값을 보관 — useEffect 의존성 없이 현재값을 읽기 위해
+  const phaseRef = useRef('idle');
+  phaseRef.current = phase;
 
   const MAX_TURNS = 10;
   const userTurnCount = messages.filter(m => m.role === 'user').length;
@@ -97,36 +88,58 @@ function ChatBot({ episode }) {
     return () => clearInterval(timer);
   }, [phase]);
 
-  // 채팅창 열릴 때 아직 시작 전이면 setup 호출
+  // 채팅창이 열릴 때 세션 시작 (idle 상태일 때만)
   useEffect(() => {
-    if (isOpen && phase === 'idle') {
-      startSession();
-    }
-  }, [isOpen]);
+    if (!isOpen) return;
+    if (phaseRef.current !== 'idle') return;
 
-  // ── 1단계: 세션 시작 ──
-  const startSession = async () => {
-    setPhase('chat');
-    setIsLoading(true);
-    try {
-      const data = await apiSetup(episode);
-      setSystemPrompt(data.systemPrompt);
-      setScore(data.score ?? 50);
-      setMessages([{ role: 'assistant', content: data.reply }]);
+    let cancelled = false;
 
-      // 이론상 첫 턴에 0/100이 나올 수 있으므로 동일하게 처리
-      if (data.status !== 'ongoing') {
-        await runDebrief([{ role: 'assistant', content: data.reply }], data.systemPrompt);
+    const startSession = async () => {
+      setPhase('chat');
+      setIsLoading(true);
+      try {
+        const data = await apiSetup(episode);
+        if (cancelled) return;
+        setSystemPrompt(data.systemPrompt);
+        setScore(data.score ?? 50);
+        setMessages([{ role: 'assistant', content: data.reply }]);
+        if (data.status !== 'ongoing') {
+          await runDebrief([{ role: 'assistant', content: data.reply }], data.systemPrompt);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        console.error('setup 오류:', err);
+        setMessages([{ role: 'assistant', content: '죄송합니다. 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.' }]);
+      } finally {
+        if (!cancelled) setIsLoading(false);
       }
+    };
+
+    startSession();
+    return () => { cancelled = true; };
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── 디브리핑 ──
+  const runDebrief = async (history, sp) => {
+    debriefHistoryRef.current = history;
+    setPhase('analyzing');
+    try {
+      const data = await apiDebrief({ systemPrompt: sp ?? systemPrompt, messages: history });
+      setDebrief(data);
     } catch (err) {
-      console.error('setup 오류:', err);
-      setMessages([{ role: 'assistant', content: '죄송합니다. 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.' }]);
+      console.error('디브리핑 오류:', err);
+      setDebrief({
+        result: 'unknown', score: null,
+        strengths: [], improvements: [], keyTakeaway: '',
+        raw: '디브리핑 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      });
     } finally {
-      setIsLoading(false);
+      setPhase('result');
     }
   };
 
-  // ── 2단계: 매 턴 전송 ──
+  // ── 매 턴 전송 ──
   const handleSend = async () => {
     if (!input.trim() || isLoading || phase !== 'chat') return;
 
@@ -137,42 +150,31 @@ function ChatBot({ episode }) {
     setIsLoading(true);
 
     try {
-      const data = await apiTurn({
-        systemPrompt,
-        messages: nextMessages,
-        previousScore: score
-      });
-
+      const data = await apiTurn({ systemPrompt, messages: nextMessages, previousScore: score });
       setScore(data.score ?? score);
-      setMessages(data.messages); // 백엔드가 assistant 응답까지 붙여서 돌려줌
+      setMessages(data.messages);
 
       const newUserTurns = data.messages.filter(m => m.role === 'user').length;
 
       if (data.status !== 'ongoing') {
-        // 0 또는 100에 도달 → 바로 디브리핑
         setIsLoading(false);
         await runDebrief(data.messages, systemPrompt);
         return;
       }
-
       if (newUserTurns >= MAX_TURNS) {
-        // 턴 초과 → 조기 종료 후 디브리핑
         setIsLoading(false);
         await handleForceEnd(data.messages);
         return;
       }
     } catch (err) {
       console.error('turn 오류:', err);
-      setMessages(prev => [...prev, {
-        role: 'assistant',
-        content: '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.'
-      }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: '죄송합니다. 오류가 발생했습니다. 다시 시도해주세요.' }]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // ── 조기 종료 (종료 버튼) ──
+  // ── 종료 버튼 ──
   const handleManualEnd = async () => {
     if (isLoading || phase !== 'chat' || userTurnCount === 0) return;
     await handleForceEnd(messages);
@@ -181,12 +183,7 @@ function ChatBot({ episode }) {
   const handleForceEnd = async (history) => {
     setPhase('analyzing');
     try {
-      const data = await apiTurn({
-        systemPrompt,
-        messages: history,
-        previousScore: score,
-        forceEnd: true
-      });
+      const data = await apiTurn({ systemPrompt, messages: history, previousScore: score, forceEnd: true });
       setScore(data.score ?? score);
       await runDebrief(data.messages, systemPrompt);
     } catch (err) {
@@ -195,33 +192,10 @@ function ChatBot({ episode }) {
     }
   };
 
-  // ── 3단계: 디브리핑 ──
-  const runDebrief = async (history, sp) => {
-    debriefHistoryRef.current = history;
-    setPhase('analyzing');
-    try {
-      const data = await apiDebrief({ systemPrompt: sp ?? systemPrompt, messages: history });
-      setDebrief(data);
-    } catch (err) {
-      console.error('디브리핑 오류:', err);
-      setDebrief({
-        result: 'unknown',
-        score: null,
-        strengths: [],
-        improvements: [],
-        keyTakeaway: '',
-        raw: '디브리핑 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
-      });
-    } finally {
-      setPhase('result');
-    }
-  };
-
   const handleRetryDebrief = () => {
     if (debriefHistoryRef.current) runDebrief(debriefHistoryRef.current, systemPrompt);
   };
 
-  // ── 렌더 ──
   return (
     <>
       <style>{`
@@ -259,7 +233,6 @@ function ChatBot({ episode }) {
       <div className={`fixed bottom-28 right-8 w-80 h-96 bg-white rounded-2xl shadow-2xl flex flex-col z-50 border border-gray-100 transition-all duration-300 ease-out ${
         isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'
       }`}>
-
         {/* 헤더 */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-indigo-600 rounded-t-2xl shrink-0">
           <div>
@@ -270,10 +243,8 @@ function ChatBot({ episode }) {
           </div>
           <div className="flex items-center gap-3">
             {phase === 'chat' && userTurnCount > 0 && (
-              <button
-                onClick={handleManualEnd}
-                className="text-xs text-indigo-100 hover:text-white border border-indigo-300 rounded-full px-2 py-1 transition-all"
-              >
+              <button onClick={handleManualEnd}
+                className="text-xs text-indigo-100 hover:text-white border border-indigo-300 rounded-full px-2 py-1 transition-all">
                 종료
               </button>
             )}
@@ -298,9 +269,7 @@ function ChatBot({ episode }) {
                       msg.role === 'user'
                         ? 'bg-indigo-600 text-white rounded-br-none'
                         : 'bg-gray-100 text-gray-700 rounded-bl-none'
-                    }`}>
-                      {msg.content}
-                    </div>
+                    }`}>{msg.content}</div>
                   </div>
                 ))}
                 {isLoading && phase === 'chat' && (
@@ -309,7 +278,6 @@ function ChatBot({ episode }) {
                   </div>
                 )}
               </div>
-
               {phase === 'analyzing' && <AnalyzingOverlay text={ANALYZING_MESSAGES[analyzingIdx]} />}
               {phase === 'result'    && <ResultOverlay debrief={debrief} onShowReport={() => setPhase('report')} />}
             </>
@@ -319,20 +287,15 @@ function ChatBot({ episode }) {
         {/* 입력 */}
         {phase === 'chat' && (
           <div className="flex items-center gap-2 px-3 py-3 border-t border-gray-100 shrink-0">
-            <input
-              type="text"
-              value={input}
+            <input type="text" value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSend()}
               placeholder="메시지를 입력하세요..."
               disabled={isLoading}
               className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2 focus:outline-none focus:border-indigo-400 disabled:bg-gray-50"
             />
-            <button
-              onClick={handleSend}
-              disabled={isLoading}
-              className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center hover:bg-indigo-700 transition-all disabled:opacity-50"
-            >
+            <button onClick={handleSend} disabled={isLoading}
+              className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center hover:bg-indigo-700 transition-all disabled:opacity-50">
               <Send size={14} />
             </button>
           </div>
@@ -379,7 +342,8 @@ function ResultOverlay({ debrief, onShowReport }) {
             {isSuccess ? '고객의 마음을 여는 데 성공했어요' : isFail ? '이번엔 접근이 닿지 않았어요' : '결과를 확인해보세요'}
           </div>
         </div>
-        <button onClick={onShowReport} className="mt-1 w-full text-sm font-medium bg-indigo-600 text-white rounded-xl py-2 hover:bg-indigo-700 transition-all">
+        <button onClick={onShowReport}
+          className="mt-1 w-full text-sm font-medium bg-indigo-600 text-white rounded-xl py-2 hover:bg-indigo-700 transition-all">
           분석 결과 보기
         </button>
       </div>
@@ -407,7 +371,6 @@ function ReportView({ debrief, onShowTranscript, onRetry }) {
           대화 다시 보기
         </button>
       </div>
-
       {isUnknown ? (
         <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 text-xs text-gray-600 leading-relaxed">
           <p className="mb-2">분석 결과를 정돈된 형식으로 불러오지 못했습니다.</p>
@@ -430,7 +393,6 @@ function ReportView({ debrief, onShowTranscript, onRetry }) {
               ))}
             </div>
           </section>
-
           <section>
             <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-2">
               <AlertTriangle size={13} className="text-amber-500" /> 아쉬운 점
@@ -448,7 +410,6 @@ function ReportView({ debrief, onShowTranscript, onRetry }) {
               </div>
             )}
           </section>
-
           {debrief.keyTakeaway && (
             <section className="rounded-xl bg-indigo-50 border border-indigo-100 px-3 py-3 flex gap-2">
               <Quote size={14} className="text-indigo-400 shrink-0 mt-0.5" />
@@ -473,9 +434,7 @@ function TranscriptView({ messages, onBack }) {
             msg.role === 'user'
               ? 'bg-indigo-600 text-white rounded-br-none'
               : 'bg-gray-100 text-gray-700 rounded-bl-none'
-          }`}>
-            {msg.content}
-          </div>
+          }`}>{msg.content}</div>
         </div>
       ))}
     </div>
