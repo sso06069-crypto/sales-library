@@ -1,4 +1,4 @@
-const REACTION_RE = /\[REACTION:\s*(positive|negative)\]/i;
+const REACTION_RE = /\[REACTION:\s*(positive|neutral|negative)\]/i;
 
 function deriveStatusFromScore(score) {
   if (score === 0) return 'fail';
