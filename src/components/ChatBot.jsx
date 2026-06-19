@@ -1,5 +1,28 @@
-import React, { useState } from 'react';
-import { MessageCircle, X, Send } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  MessageCircle, X, Send, CheckCircle2, XCircle, Loader2,
+  ThumbsUp, AlertTriangle, ArrowLeft, Quote
+} from 'lucide-react';
+
+const ANALYZING_MESSAGES = [
+  'AI가 소통 과정을 분석중입니다...',
+  '강점과 약점을 정리하고 있어요...',
+  '핵심 한 줄을 뽑아내고 있어요...'
+];
+
+// 고정된 컨페티 좌표/색상 (렌더마다 위치가 바뀌지 않도록 미리 정의)
+const CONFETTI_PIECES = [
+  { left: '8%', color: '#6366F1', delay: '0s', duration: '2.4s' },
+  { left: '18%', color: '#22C55E', delay: '0.15s', duration: '2.1s' },
+  { left: '28%', color: '#F59E0B', delay: '0.3s', duration: '2.6s' },
+  { left: '38%', color: '#EC4899', delay: '0.05s', duration: '2.3s' },
+  { left: '50%', color: '#6366F1', delay: '0.25s', duration: '2.5s' },
+  { left: '62%', color: '#22C55E', delay: '0.1s', duration: '2.2s' },
+  { left: '72%', color: '#F59E0B', delay: '0.35s', duration: '2.4s' },
+  { left: '82%', color: '#EC4899', delay: '0.2s', duration: '2.1s' },
+  { left: '92%', color: '#6366F1', delay: '0.4s', duration: '2.6s' },
+  { left: '46%', color: '#22C55E', delay: '0.5s', duration: '2.3s' }
+];
 
 function ChatBot({ episode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -10,10 +33,26 @@ function ChatBot({ episode }) {
   const [isLoading, setIsLoading] = useState(false);
   const [successCount, setSuccessCount] = useState(0);
   const [failCount, setFailCount] = useState(0);
-  const [isEnded, setIsEnded] = useState(false);
+
+  // 화면 단계: 'chat' | 'analyzing' | 'result' | 'report'
+  const [phase, setPhase] = useState('chat');
+  const [debrief, setDebrief] = useState(null); // { result, strengths, improvements, keyTakeaway, raw? }
+  const [showTranscript, setShowTranscript] = useState(false);
+  const [analyzingIdx, setAnalyzingIdx] = useState(0);
+  const debriefHistoryRef = useRef(null);
 
   const userTurnCount = messages.filter(m => m.role === 'user').length;
   const MAX_TURNS = 10;
+
+  // 분석중 문구 로테이션
+  useEffect(() => {
+    if (phase !== 'analyzing') return;
+    setAnalyzingIdx(0);
+    const timer = setInterval(() => {
+      setAnalyzingIdx(prev => (prev + 1) % ANALYZING_MESSAGES.length);
+    }, 1600);
+    return () => clearInterval(timer);
+  }, [phase]);
 
   const systemPrompt = `당신은 영업 롤플레잉 훈련을 돕는 AI입니다. 극도로 현실적인 '고객' 역할을 연기하며, 영업사원(사용자)이 실전 같은 압박감과 성취감을 느끼게 하는 것이 목표입니다.
 
@@ -70,12 +109,23 @@ function ChatBot({ episode }) {
 - 만약 사용자 메시지가 "(지금까지의 대화를 기준으로 반드시 성공 또는 실패 중 하나로 최종 판정하세요)"를 포함하면, 전체 흐름상 더 가까운 쪽으로 success 또는 fail을 선택해 고객으로서 짧게 마무리 멘트를 하고 동일한 형식의 마커를 출력하세요. (이 경우 ongoing은 허용되지 않습니다)
 
 [세션 종료 후 디브리핑 — 별도 요청 시에만]
-- 사용자 메시지가 "(아래는 지금까지의 전체 롤플레잉 대화입니다. 이 대화를 종합 평가하세요)"로 시작하는 지시를 포함하면, 그 순간 고객 역할을 완전히 종료하고 선배 영업사원 톤으로 전환하세요.
-- 가장 먼저, 전체 대화를 종합했을 때 이 영업사원의 시도가 "성공"에 가까웠는지 "실패"에 가까웠는지 하나만 명확히 선언하세요.
-- 그다음 잘한 점과 아쉬운 점을 각각 구체적으로 짚으세요. 어느 발언이 왜 효과적이었는지 또는 아쉬웠는지 분명하게 말하세요.
+- 사용자 메시지가 "(아래는 지금까지의 전체 롤플레잉 대화입니다. 이 대화를 종합 평가하세요)"로 시작하는 지시를 포함하면, 그 순간 고객 역할을 완전히 종료하고 선배 영업사원의 평가 모드로 전환하세요.
+- 전체 대화를 종합했을 때 이 영업사원의 시도가 "성공"에 가까웠는지 "실패"에 가까웠는지 먼저 하나로 판단하세요.
+- 잘한 점과 아쉬운 점을 각각 1~3개씩 구체적으로 정리하세요. 어느 발언이 왜 효과적이었는지/아쉬웠는지 분명하게 담으세요. 아쉬운 점이 정말 없다면 빈 배열로 두세요.
 - 이번 에피소드의 핵심 노하우를 외우고 싶어지는 한 문장으로 정리하세요. (Tip을 그대로 인용하지는 마세요.)
 - 사용자에게 되묻지 마세요. 질문 없이 곧바로 평가를 제시하세요.
 - 이 디브리핑 응답에는 [STATUS] 마커를 붙이지 마세요.
+- 응답은 오직 아래 형식의 순수 JSON 객체 하나만 출력하세요. 코드블록 표시(\`\`\`), 설명 문장, 인사말 등 JSON 이외의 텍스트는 절대 포함하지 마세요.
+{
+  "result": "success 또는 fail 중 하나",
+  "strengths": [
+    { "title": "10자 내외 핵심 키워드", "description": "구체적인 설명 1~2문장" }
+  ],
+  "improvements": [
+    { "title": "10자 내외 핵심 키워드", "description": "구체적인 설명 1~2문장" }
+  ],
+  "keyTakeaway": "한 문장으로 정리한 핵심 노하우"
+}
 
 [중요 원칙]
 - 너무 쉽게 동의하거나 구매·계약을 약속하지 마세요.
@@ -83,13 +133,28 @@ function ChatBot({ episode }) {
 - 단 하나의 예외 — '/힌트': 영업사원이 '/힌트'라고 입력하면, [코치] 표시와 함께 지금 상황에서 바로 던질 수 있는 구체적인 예시 한 마디를 보여주세요. (예: "공급 끊긴다는 소문 때문에 발주 망설이고 계시죠? 처럼 고객 고민을 직접 건드려 보세요.") 단 Tip의 정답 자체는 그대로 알려주지 말고 접근 방향을 보여주는 선까지만. 그 후 곧바로 고객 역할로 복귀하세요.
 - 항상 한국어로 대화하세요.`;
 
-
-
   const parseStatus = (rawContent) => {
     const match = rawContent.match(/\[STATUS:\s*(ongoing|success|fail)\]/i);
     const status = match ? match[1].toLowerCase() : 'ongoing';
     const cleanContent = rawContent.replace(/\[STATUS:\s*(ongoing|success|fail)\]/i, '').trim();
     return { status, cleanContent };
+  };
+
+  // 디브리핑 응답(JSON)을 안전하게 파싱. 실패 시 raw 텍스트를 보존해 화면에서 안내.
+  const parseDebriefJSON = (raw) => {
+    try {
+      const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      const result = parsed.result === 'success' ? 'success' : parsed.result === 'fail' ? 'fail' : 'unknown';
+      return {
+        result,
+        strengths: Array.isArray(parsed.strengths) ? parsed.strengths : [],
+        improvements: Array.isArray(parsed.improvements) ? parsed.improvements : [],
+        keyTakeaway: typeof parsed.keyTakeaway === 'string' ? parsed.keyTakeaway : ''
+      };
+    } catch (e) {
+      return { result: 'unknown', strengths: [], improvements: [], keyTakeaway: '', raw };
+    }
   };
 
   const callChatApi = async (messageList) => {
@@ -105,26 +170,33 @@ function ChatBot({ episode }) {
     return data.content[0].text;
   };
 
-  const handleDebrief = async (history) => {
-    setIsLoading(true);
+  // 대화 종료 → '분석중' 화면 → 디브리핑 결과 파싱 → '결과 카드' 화면
+  const runDebrief = async (history) => {
+    debriefHistoryRef.current = history;
+    setPhase('analyzing');
     const debriefTrigger = {
       role: 'user',
       content: '(아래는 지금까지의 전체 롤플레잉 대화입니다. 이 대화를 종합 평가하세요)'
     };
     try {
       const raw = await callChatApi([...history, debriefTrigger]);
-      setMessages(prev => [...prev, { role: 'assistant', content: raw }]);
-      setIsEnded(true);
+      setDebrief(parseDebriefJSON(raw));
     } catch (error) {
       console.error('디브리핑 오류:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: '디브리핑 생성 중 오류가 발생했습니다.' }]);
+      setDebrief({
+        result: 'unknown',
+        strengths: [],
+        improvements: [],
+        keyTakeaway: '',
+        raw: '디브리핑 생성 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
+      });
     } finally {
-      setIsLoading(false);
+      setPhase('result');
     }
   };
 
   const handleForceEnd = async (history) => {
-    setIsLoading(true);
+    setPhase('analyzing');
     const forceTrigger = {
       role: 'user',
       content: '(지금까지의 대화를 기준으로 반드시 성공 또는 실패 중 하나로 최종 판정하세요)'
@@ -134,15 +206,15 @@ function ChatBot({ episode }) {
       const { cleanContent } = parseStatus(raw);
       const finalHistory = [...history, { role: 'assistant', content: cleanContent }];
       setMessages(finalHistory);
-      await handleDebrief(finalHistory);
+      await runDebrief(finalHistory);
     } catch (error) {
       console.error('강제 종료 오류:', error);
-      setIsLoading(false);
+      setPhase('chat');
     }
   };
 
   const handleSend = async () => {
-    if (!input.trim() || isLoading || isEnded) return;
+    if (!input.trim() || isLoading || phase !== 'chat') return;
 
     const userMessage = { role: 'user', content: input };
     const newMessages = [...messages, userMessage];
@@ -167,7 +239,7 @@ function ChatBot({ episode }) {
 
       if (newSuccessCount >= 3 || newFailCount >= 3) {
         setIsLoading(false);
-        await handleDebrief(updatedMessages);
+        await runDebrief(updatedMessages);
         return;
       }
 
@@ -188,13 +260,46 @@ function ChatBot({ episode }) {
   };
 
   const handleManualEnd = async () => {
-    if (isLoading || isEnded || messages.filter(m => m.role === 'user').length === 0) return;
-    setIsLoading(false);
+    if (isLoading || phase !== 'chat' || userTurnCount === 0) return;
     await handleForceEnd(messages);
+  };
+
+  const handleRetryDebrief = () => {
+    if (debriefHistoryRef.current) runDebrief(debriefHistoryRef.current);
   };
 
   return (
     <>
+      {/* 컨페티 / 흔들림 이펙트용 스타일 (전역 클래스명 충돌 방지를 위해 rp- 접두사 사용) */}
+      <style>{`
+        .rp-confetti-piece {
+          position: absolute;
+          top: -10px;
+          width: 6px;
+          height: 10px;
+          border-radius: 1px;
+          opacity: 0.9;
+          animation-name: rp-confetti-fall;
+          animation-timing-function: ease-in;
+          animation-iteration-count: 1;
+          animation-fill-mode: forwards;
+        }
+        @keyframes rp-confetti-fall {
+          0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+          100% { transform: translateY(220px) rotate(540deg); opacity: 0; }
+        }
+        .rp-shake {
+          animation: rp-shake-kf 0.5s ease-in-out;
+        }
+        @keyframes rp-shake-kf {
+          0%, 100% { transform: translateX(0); }
+          20%      { transform: translateX(-6px); }
+          40%      { transform: translateX(5px); }
+          60%      { transform: translateX(-4px); }
+          80%      { transform: translateX(3px); }
+        }
+      `}</style>
+
       {/* 플로팅 버튼 */}
       <button
         onClick={() => setIsOpen(prev => !prev)}
@@ -208,13 +313,15 @@ function ChatBot({ episode }) {
         isOpen ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8 pointer-events-none'
       }`}>
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-indigo-600 rounded-t-2xl">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 bg-indigo-600 rounded-t-2xl shrink-0">
           <div>
             <div className="text-white font-semibold text-sm">롤플레잉 챗봇</div>
-            <div className="text-indigo-200 text-xs">{userTurnCount}/{MAX_TURNS}턴</div>
+            <div className="text-indigo-200 text-xs">
+              {phase === 'chat' ? `${userTurnCount}/${MAX_TURNS}턴` : '시뮬레이션 종료'}
+            </div>
           </div>
           <div className="flex items-center gap-3">
-            {!isEnded && userTurnCount > 0 && (
+            {phase === 'chat' && userTurnCount > 0 && (
               <button
                 onClick={handleManualEnd}
                 className="text-xs text-indigo-100 hover:text-white border border-indigo-300 rounded-full px-2 py-1 transition-all"
@@ -231,63 +338,55 @@ function ChatBot({ episode }) {
           </div>
         </div>
 
-       
-        {/* 메시지 영역 */}
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-          {messages.map((msg, index) => {
-            const hasOptions = msg.content.includes('[선택지]');
-            return (
-              <div key={index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] px-3 py-2 rounded-xl text-sm ${
-                  msg.role === 'user' 
-                    ? 'bg-indigo-600 text-white rounded-br-none' 
-                    : 'bg-gray-100 text-gray-700 rounded-bl-none'
-                }`}>
-                  {!hasOptions ? (
-                    msg.content
-                  ) : (
-                    (() => {
-                      const content = msg.content;
-                      const parts = content.split(/(\d+\.)/);
-                      const mainContent = parts[0].replace('[선택지]', '');
-                      
-                      return (
-                        <div className="flex flex-col">
-                          <p className="whitespace-pre-wrap">{mainContent.trim()}</p>
-                          {parts.length > 1 && (
-                            <div className="font-bold border-t border-gray-300 pt-2 mb-2 text-indigo-700">[선택지]</div>
-                          )}
-                          {parts.slice(1).map((part, i, arr) => {
-                          if (i % 2 === 0) {
-                            const content = arr[i + 1] ? part + arr[i + 1] : part;
-                            return (
-                            <div key={i} className="py-1.5 border-b border-gray-100 last:border-0 text-sm leading-relaxed hover:bg-indigo-50 transition-colors">
-                              {part + arr[i + 1]}
-                            </div>
-                          );
-                        }
-                        return null;
-                      })}
+        {/* 본문 영역: phase에 따라 대화 / 분석중 오버레이 / 결과 카드 오버레이 / 리포트로 전환 */}
+        <div className="flex-1 overflow-y-auto p-4 relative">
+          {phase === 'report' ? (
+            showTranscript ? (
+              <TranscriptView messages={messages} onBack={() => setShowTranscript(false)} />
+            ) : (
+              <ReportView debrief={debrief} onShowTranscript={() => setShowTranscript(true)} onRetry={handleRetryDebrief} />
+            )
+          ) : (
+            <>
+              <div className="flex flex-col gap-3">
+                {messages.map((msg, index) => (
+                  <div
+                    key={index}
+                    className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-[75%] px-3 py-2 rounded-xl text-sm ${
+                        msg.role === 'user'
+                          ? 'bg-indigo-600 text-white rounded-br-none'
+                          : 'bg-gray-100 text-gray-700 rounded-bl-none'
+                      }`}
+                    >
+                      {msg.content}
                     </div>
-                      );
-                    })()
-                  )}
-                </div>
+                  </div>
+                ))}
+                {isLoading && phase === 'chat' && (
+                  <div className="flex justify-start">
+                    <div className="bg-gray-100 text-gray-400 px-3 py-2 rounded-xl rounded-bl-none text-sm">
+                      입력 중...
+                    </div>
+                  </div>
+                )}
               </div>
-            );
-          })}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-gray-100 text-gray-400 px-3 py-2 rounded-xl rounded-bl-none text-sm">
-                입력 중...
-              </div>
-            </div>
+
+              {phase === 'analyzing' && (
+                <AnalyzingOverlay text={ANALYZING_MESSAGES[analyzingIdx]} />
+              )}
+              {phase === 'result' && (
+                <ResultOverlay debrief={debrief} onShowReport={() => setPhase('report')} />
+              )}
+            </>
           )}
         </div>
 
-        {/* 입력 영역 */}
-        {!isEnded && (
-          <div className="flex items-center gap-2 px-3 py-3 border-t border-gray-100">
+        {/* 입력 영역: 대화 단계에서만 노출 */}
+        {phase === 'chat' && (
+          <div className="flex items-center gap-2 px-3 py-3 border-t border-gray-100 shrink-0">
             <input
               type="text"
               value={input}
@@ -308,6 +407,183 @@ function ChatBot({ episode }) {
         )}
       </div>
     </>
+  );
+}
+
+// '분석중' 오버레이: 대화 화면 위에 떠서 로딩 상태를 알려준다.
+function AnalyzingOverlay({ text }) {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-white/90 backdrop-blur-sm">
+      <Loader2 size={28} className="text-indigo-500 animate-spin" />
+      <div className="text-sm font-medium text-gray-700 text-center px-6">{text}</div>
+      <div className="text-xs text-gray-400">잠시만 기다려주세요</div>
+    </div>
+  );
+}
+
+// 성공/실패 결과를 알리는 플로팅 카드. [분석 결과 보기]를 누르면 리포트로 전환된다.
+function ResultOverlay({ debrief, onShowReport }) {
+  const isSuccess = debrief?.result === 'success';
+  const isFail = debrief?.result === 'fail';
+
+  return (
+    <div className="absolute inset-0 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm overflow-hidden">
+      {isSuccess && (
+        <div className="absolute inset-0 pointer-events-none">
+          {CONFETTI_PIECES.map((p, i) => (
+            <span
+              key={i}
+              className="rp-confetti-piece"
+              style={{
+                left: p.left,
+                backgroundColor: p.color,
+                animationDelay: p.delay,
+                animationDuration: p.duration
+              }}
+            />
+          ))}
+        </div>
+      )}
+
+      <div className={`relative w-64 rounded-2xl bg-white shadow-xl px-5 py-6 flex flex-col items-center gap-3 ${isFail ? 'rp-shake' : ''}`}>
+        {isSuccess && <CheckCircle2 size={40} className="text-emerald-500" />}
+        {isFail && <XCircle size={40} className="text-rose-500" />}
+        {!isSuccess && !isFail && <AlertTriangle size={40} className="text-amber-500" />}
+
+        <div className="text-center">
+          <div className={`text-base font-bold ${
+            isSuccess ? 'text-emerald-600' : isFail ? 'text-rose-600' : 'text-amber-600'
+          }`}>
+            {isSuccess ? '미션 성공' : isFail ? '미션 실패' : '시뮬레이션 종료'}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            {isSuccess ? '고객의 마음을 여는 데 성공했어요' : isFail ? '이번엔 접근이 닿지 않았어요' : '결과를 확인해보세요'}
+          </div>
+        </div>
+
+        <button
+          onClick={onShowReport}
+          className="mt-1 w-full text-sm font-medium bg-indigo-600 text-white rounded-xl py-2 hover:bg-indigo-700 transition-all"
+        >
+          분석 결과 보기
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// 구조화된 디브리핑 리포트. 마크다운 파싱 없이 데이터 필드를 그대로 레이아웃에 매핑한다.
+function ReportView({ debrief, onShowTranscript, onRetry }) {
+  if (!debrief) return null;
+  const isSuccess = debrief.result === 'success';
+  const isFail = debrief.result === 'fail';
+  const isUnknown = debrief.result === 'unknown';
+
+  return (
+    <div className="flex flex-col gap-4 text-sm">
+      <div className="flex items-center justify-between">
+        <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
+          isSuccess ? 'bg-emerald-50 text-emerald-600' : isFail ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'
+        }`}>
+          {isSuccess && <CheckCircle2 size={13} />}
+          {isFail && <XCircle size={13} />}
+          {isUnknown && <AlertTriangle size={13} />}
+          {isSuccess ? '종합 평가: 성공' : isFail ? '종합 평가: 실패' : '평가 결과 확인 필요'}
+        </span>
+        <button
+          onClick={onShowTranscript}
+          className="text-xs text-gray-400 hover:text-indigo-500 transition-all"
+        >
+          대화 다시 보기
+        </button>
+      </div>
+
+      {isUnknown ? (
+        <div className="rounded-xl border border-amber-100 bg-amber-50/60 p-3 text-xs text-gray-600 leading-relaxed">
+          <p className="mb-2">분석 결과를 정돈된 형식으로 불러오지 못했습니다.</p>
+          {debrief.raw && <p className="text-gray-500 mb-3">{debrief.raw}</p>}
+          <button onClick={onRetry} className="text-indigo-600 font-medium hover:underline">
+            다시 분석하기
+          </button>
+        </div>
+      ) : (
+        <>
+          <section>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-2">
+              <ThumbsUp size={13} className="text-emerald-500" /> 잘한 점
+            </div>
+            <div className="flex flex-col gap-2">
+              {debrief.strengths.length === 0 && (
+                <div className="text-xs text-gray-400">기록된 강점이 없습니다.</div>
+              )}
+              {debrief.strengths.map((s, i) => (
+                <div key={i} className="rounded-xl bg-emerald-50/60 border border-emerald-100 px-3 py-2.5">
+                  <div className="text-xs font-semibold text-emerald-700">{s.title}</div>
+                  <div className="text-xs text-gray-600 mt-0.5 leading-relaxed">{s.description}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-2">
+              <AlertTriangle size={13} className="text-amber-500" /> 아쉬운 점
+            </div>
+            {debrief.improvements.length === 0 ? (
+              <div className="rounded-xl bg-gray-50 border border-gray-100 px-3 py-2.5 text-xs text-gray-500">
+                특별히 아쉬운 점은 없습니다.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {debrief.improvements.map((s, i) => (
+                  <div key={i} className="rounded-xl bg-amber-50/60 border border-amber-100 px-3 py-2.5">
+                    <div className="text-xs font-semibold text-amber-700">{s.title}</div>
+                    <div className="text-xs text-gray-600 mt-0.5 leading-relaxed">{s.description}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {debrief.keyTakeaway && (
+            <section className="rounded-xl bg-indigo-50 border border-indigo-100 px-3 py-3 flex gap-2">
+              <Quote size={14} className="text-indigo-400 shrink-0 mt-0.5" />
+              <div className="text-xs text-indigo-700 leading-relaxed font-medium">{debrief.keyTakeaway}</div>
+            </section>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+// 리포트에서 '대화 다시 보기'를 눌렀을 때 보여줄 읽기 전용 전체 대화 기록
+function TranscriptView({ messages, onBack }) {
+  return (
+    <div className="flex flex-col gap-3">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1 text-xs text-gray-400 hover:text-indigo-500 transition-all mb-1"
+      >
+        <ArrowLeft size={13} /> 리포트로 돌아가기
+      </button>
+      {messages.map((msg, index) => (
+        <div
+          key={index}
+          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+        >
+          <div
+            className={`max-w-[75%] px-3 py-2 rounded-xl text-sm ${
+              msg.role === 'user'
+                ? 'bg-indigo-600 text-white rounded-br-none'
+                : 'bg-gray-100 text-gray-700 rounded-bl-none'
+            }`}
+          >
+            {msg.content}
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
 
