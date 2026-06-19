@@ -27,10 +27,17 @@ module.exports = async function handler(req, res) {
       return res.status(400).json({ error: 'systemPrompt and non-empty messages are required' });
     }
 
+    // 변경: 대화 앞뒤 각 5턴만 추려서 전송
+    const trimmed = messages.length > 10
+    ? [...messages.slice(0, 5), ...messages.slice(-5)]
+    : messages;
+
     const raw = await callClaude(systemPrompt, [
-      ...messages,
-      { role: 'user', content: DEBRIEF_TRIGGER }
+    ...trimmed,
+    { role: 'user', content: DEBRIEF_TRIGGER }
     ]);
+    
+
 
     const debrief = parseDebriefResponse(raw);
     res.status(200).json(debrief);

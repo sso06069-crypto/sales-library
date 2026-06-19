@@ -5,7 +5,7 @@
 // 모델을 바꾸거나 재시도 로직을 넣을 때 여기 한 곳만 고치면 된다.
 
 const MODEL = 'claude-sonnet-4-6';
-const MAX_TOKENS = 1000;
+const MAX_TOKENS = 800;
 
 /**
  * @param {string} systemPrompt
