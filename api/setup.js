@@ -37,10 +37,7 @@ module.exports = async function handler(req, res) {
 
     const parsed = parseTurnResponse(raw);
     const score = 50; // 항상 50으로 시작, reaction은 첫 대사라 무시
-
-    const status = deriveStatusFromScore(score);
-    res.status(200).json({ reply: parsed.reply, status, score, systemPrompt });
-
+    
     const status = deriveStatusFromScore(score);
     res.status(200).json({ reply: parsed.reply, status, score, systemPrompt });
   } catch (error) {
