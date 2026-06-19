@@ -37,11 +37,6 @@ function parseTurnResponse(rawText) {
   const reply = rawText.replace(REACTION_RE, '').trim();
   return { reply, reaction };
 }
-
-  const reply = rawText.replace(SCORE_RE, '').trim();
-  const status = deriveStatusFromScore(score);
-
-  return { reply, status, score };
 }
 
 /**
