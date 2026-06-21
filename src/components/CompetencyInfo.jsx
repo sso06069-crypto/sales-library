@@ -68,7 +68,7 @@ export function CompetencyInfo() {
     <div className="max-w-4xl mx-auto px-6 py-12 md:px-10 md:py-16 bg-white">
 
       {/* 상단 캐릭터 인사 */}
-      <div className="flex items-center gap-5 mb-16 pb-10 border-b border-gray-100">
+      <div className="flex items-center gap-5 mb-10 pb-6 border-b border-gray-100">
         <img src={soloCharacter} alt="솔로 캐릭터" className="w-14 h-14 shrink-0" />
         <div>
           <p className="text-xs font-medium tracking-wide text-gray-400 uppercase mb-1">
@@ -91,7 +91,7 @@ export function CompetencyInfo() {
             <section key={area.id}>
 
               {/* 영역 헤더 */}
-              <div className="flex items-center gap-4 mb-6">
+              <div className="flex items-center gap-4 mb-4">
                 <span
                   className={`shrink-0 w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold text-white ${c.accent}`}
                 >
@@ -105,7 +105,7 @@ export function CompetencyInfo() {
                 </div>
               </div>
 
-              <p className="text-sm text-gray-500 leading-relaxed mb-6 ml-13 md:ml-13">
+              <p className="text-sm text-gray-500 leading-relaxed mb- ml-13 md:ml-13">
                 {area.desc}
               </p>
 
@@ -113,7 +113,7 @@ export function CompetencyInfo() {
               <img
                 src={area.img}
                 alt={area.title}
-                className="w-full max-h-56 object-cover rounded-xl mb-8 border border-gray-100"
+                className="w-full rounded-xl mb-6 border border-gray-100 object-contain"
               />
 
               {/* 영역별 상세 역량 카드 리스트 */}

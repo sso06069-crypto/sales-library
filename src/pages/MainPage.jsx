@@ -204,9 +204,9 @@ function MainPage() {
   </div>
 
         {/* VIEW AREA */}
-        <div className="relative min-h-[600px]">
+        <div className="relative overflow-hidden">
           {/* COMPETENCY VIEW */}
-          <div className={`transition-all duration-300 ${view === 'competency' ? 'opacity-100 translate-x-0' : 'opacity-0 pointer-events-none -translate-x-4 absolute inset-0'}`}>
+          <div className={`transition-all duration-300 ${view === 'competency' ? 'opacity-100 translate-x-0' : 'opacity-0 pointer-events-none -translate-x-4 absolute'}`}>
             {areas.map(area => (
               <div key={area.name} className="mb-10">
                 <div className={`mb-4 border-l-4 ${area.color} pl-3`}>
@@ -236,7 +236,7 @@ function MainPage() {
             className={`transition-all duration-300 ${
               view === 'allEpisodes'
                 ? 'opacity-100 translate-x-0'
-                : 'opacity-0 pointer-events-none -translate-x-4 absolute inset-0'
+                : 'opacity-0 pointer-events-none -translate-x-4 absolute'
             }`}
           >
             <h3 className="font-bold text-lg mb-4 text-blue-800">
@@ -310,7 +310,7 @@ function MainPage() {
             className={`transition-all duration-300 ${
               view === 'about'
                 ? 'opacity-100 translate-x-0'
-                : 'opacity-0 pointer-events-none -translate-x-4 absolute inset-0'
+                : 'opacity-0 pointer-events-none -translate-x-4 absolute'
             }`}
           >
             <AboutPage />
@@ -321,7 +321,7 @@ function MainPage() {
             className={`transition-all duration-300 ${
               view === 'competencyInfo'
                 ? 'opacity-100 translate-x-0'
-                : 'opacity-0 pointer-events-none -translate-x-4 absolute inset-0'
+                : 'opacity-0 pointer-events-none -translate-x-4 absolute'
             }`}
           >
             <CompetencyInfo />

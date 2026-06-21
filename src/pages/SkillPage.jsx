@@ -202,8 +202,8 @@ function SkillPage() {
               flex
               justify-between
               items-center
-              mb-3
-              md:mb-5
+              mb-1
+              md:mb-2
             "
           >
             <span className="text-sm md:text-base font-semibold text-gray-700">
