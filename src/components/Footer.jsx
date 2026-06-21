@@ -1,18 +1,27 @@
 import React from 'react';
+import logo from "../assets/logo.png";
 
 function Footer() {
   return (
-    <div className="mt-16 pb-8 flex items-center justify-center gap-2 text-gray-400 text-xs">
-      <span>© Sales Library</span>
-      <span>·</span>
-      <a
-        href="https://github.com/sso06069-crypto/sales-library"
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center gap-1 hover:text-gray-600 transition-all"
-      >
-        🔗 GitHub
-      </a>
+    <div className="mt-16 pb-8 flex flex-col items-center gap-3 text-gray-400 text-xs">
+      <img
+        src={logo}
+        alt="Sales Library"
+        className="w-32 h-auto opacity-80"
+      />
+
+      <div>
+        <span>© Sales Library</span>
+        <span> · </span>
+        <a
+          href="https://github.com/sso06069-crypto/sales-library"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          🔗 GitHub
+        </a>
+      </div>
+
     </div>
   );
 }

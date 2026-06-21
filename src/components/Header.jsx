@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
+import logo from "../assets/logo.png";
 
 function Header() {
   const navigate = useNavigate();
@@ -37,22 +38,29 @@ function Header() {
       ) : (
         <div className="w-full">
           {/* 메인 타이틀 */}
-          <h1
-            className="text-5xl md:text-6xl font-normal tracking-tight leading-tight mb-4"
-            style={{ fontFamily: "'DM Serif Display', serif" }}
-          >
-            <span style={{ color: '#1a1a2e' }}>Sales </span>
-            <span
-              style={{
-                background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #3b82f6 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text',
-              }}
+          <div className="flex items-center justify-between mb-4 w-full">
+            <h1
+              className="text-5xl md:text-6xl font-normal tracking-tight leading-tight mb-4"
+              style={{ fontFamily: "'DM Serif Display', serif" }}
             >
-              Tip Book
-            </span>
-          </h1>
+              <span style={{ color: '#1a1a2e' }}>Sales </span>
+              <span
+                style={{
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #3b82f6 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text',
+                }}
+              >
+                Tip Book
+              </span>
+            </h1>
+            <img
+              src={logo}
+              alt="Sales Library"
+              className="w-48 h-auto"
+            />
+          </div>
 
           {/* 설명 박스 */}
           <div

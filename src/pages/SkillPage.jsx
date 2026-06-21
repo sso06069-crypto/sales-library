@@ -196,7 +196,31 @@ function SkillPage() {
             "
           />
 
+          {/* EPISODE COUNT */}
+          <div
+            className="
+              flex
+              justify-between
+              items-center
+              mb-3
+              md:mb-5
+            "
+          >
+            <span className="text-sm md:text-base font-semibold text-gray-700">
+              에피소드 개수 {filteredEpisodes.length}개
+            </span>
+          </div>
 
+
+          {/* EPISODES */}
+          <div
+            className="
+              flex
+              flex-col
+              gap-2
+              md:gap-3
+            "
+          ></div>
 
           {/* EPISODES */}
           <div
