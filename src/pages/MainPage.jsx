@@ -70,7 +70,7 @@ function MainPage() {
         <div className="mt-6 mb-8 flex items-center justify-between">
 
   {/* MAIN SWITCH */}
-    <div className="relative inline-flex w-[360px] bg-gray-200 rounded-full p-1">
+    <div className="relative inline-flex w-[260px] md:w-[360px] bg-gray-200 rounded-full p-1">
       <div
         className={`absolute top-1 bottom-1 left-1 
         w-[calc(33.33%-4px)] bg-white rounded-full shadow-sm 

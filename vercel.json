@@ -1,6 +1,11 @@
 {
-    "rewrites": [
-      { "source": "/api/(.*)", "destination": "/api/$1" },
-      { "source": "/(.*)", "destination": "/index.html" }
-    ]
-  }
+  "functions": {
+    "api/setup.js": { "includeFiles": "api/lib/**" },
+    "api/turn.js":  { "includeFiles": "api/lib/**" },
+    "api/debrief.js": { "includeFiles": "api/lib/**" }
+  },
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
+}
